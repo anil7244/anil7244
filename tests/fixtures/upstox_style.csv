@@ -1,0 +1,6 @@
+Trade History Report
+Client: XYZ123,,,,,,,,
+,,,,,,,,
+Date,Company,Exchange,Segment,Instrument Type,Option Type,Strike Price,Expiry,Trade Num,Trade Time,Side,Quantity,Price
+05-03-2024,NIFTY,NSE,FO,OPTIDX,CE,22000,07-03-2024,9001,10:15:30,Buy,50,120.5
+05-03-2024,NIFTY,NSE,FO,OPTIDX,CE,22000,07-03-2024,9002,11:45:00,Sell,50,140.25
