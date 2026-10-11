@@ -43,10 +43,12 @@ def pnl_bar(df: pd.DataFrame, x: str, title: str, horizontal: bool = False):
     fig.update_layout(showlegend=False, bargap=0.25, margin=dict(t=40, b=10, l=10, r=10),
                       xaxis_title=None, yaxis_title=None)
     fig.update_traces(marker_line_width=0)
+    # Profit and loss bars are separate traces; pin the category order to the data's order.
+    order = dict(type="category", categoryorder="array", categoryarray=list(df[x]))
     if horizontal:
-        fig.update_yaxes(type="category")
+        fig.update_yaxes(**order)
     else:
-        fig.update_xaxes(type="category")
+        fig.update_xaxes(**order)
     return fig
 
 
@@ -101,7 +103,8 @@ with tab_over:
         c[0].metric("Avg win", inr(s["avg_win"]))
         c[1].metric("Avg loss", inr(s["avg_loss"]))
         c[2].metric("Expectancy / trade", inr(s["expectancy"]))
-        c[3].metric("Green days", f"{s['green_days']} / {s['trading_days']}")
+        c[3].metric("Green days", f"{s['green_days'] / s['trading_days'] * 100:.0f}%",
+                    help=f"{s['green_days']} of {s['trading_days']} trading days were profitable")
         c[4].metric("Best day", inr(s["best_day"]))
         c[5].metric("Worst day", inr(s["worst_day"]))
 
@@ -180,8 +183,10 @@ with tab_cal:
             rgb = "42,120,214" if v > 0 else "227,73,72"
             return f"background-color: rgba({rgb},{0.15 + 0.6 * min(abs(v) / peak, 1):.2f})"
 
-        st.dataframe(matrix.style.format(lambda v: "" if pd.isna(v) else inr(v)).map(tint, subset=list(matrix.columns[:-1])),
-                     width="stretch")
+        styles = matrix.map(tint)
+        styles["Total"] = "font-weight: 600"
+        shown = matrix.map(lambda v: "" if pd.isna(v) else inr(v))   # text, so empty months stay blank
+        st.dataframe(shown.style.apply(lambda _: styles, axis=None), width="stretch")
 
 # ---------------------------------------------------------------- trades & journal
 with tab_trades:
@@ -265,7 +270,7 @@ with tab_analysis:
         dims = [("underlying", "By underlying"), ("instrument", "By instrument & direction"),
                 ("weekday", "By weekday (entry)"), ("entry_hour", "By entry hour"),
                 ("holding", "By holding time"), ("broker", "By broker"),
-                ("strategy", "By strategy"), ("tags", "By tag"), ("mistakes", "Cost of mistakes")]
+                ("strategy", "By strategy"), ("tags", "By tag"), ("mistakes", "P&L by mistake")]
         cols = st.columns(2)
         for i, (dim, title) in enumerate(dims):
             b = analytics.breakdown(f2, dim)
@@ -282,8 +287,10 @@ with tab_analysis:
                                      width="stretch")
         rr = filtered["r_multiple"].dropna()
         if not rr.empty:
-            st.plotly_chart(px.histogram(rr, nbins=30, title="R-multiple distribution",
-                                         color_discrete_sequence=[PROFIT]), width="stretch")
+            hist = px.histogram(rr, nbins=30, title="R-multiple distribution", color_discrete_sequence=[PROFIT])
+            hist.update_layout(showlegend=False, xaxis_title="R-multiple (net P&L ÷ planned risk)",
+                               yaxis_title="Trades", bargap=0.05)
+            st.plotly_chart(hist, width="stretch")
 
 # ---------------------------------------------------------------- import & sync
 with tab_import:
